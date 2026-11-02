@@ -22,7 +22,7 @@ caso.json → validar → Parte 2 (selección) → Parte 1 (reparto) → verific
 
 ## 2. Formato de entrada
 
-Un caso = un archivo JSON (UTF-8). Se puede pasar un archivo o una carpeta con varios `.json`.
+Un caso = un archivo JSON (UTF-8). Se puede pasar un archivo o una carpeta con varios `.json`. En una carpeta se procesan solo los `.json` directos; las subcarpetas se ignoran.
 
 ### 2.1 Campos globales
 
@@ -160,7 +160,7 @@ Reparto final `x_0 = 3, x_2 = 2`. Utilidad total `u_0(3) + u_2(2) = 10 + 6·ln 3
 - **Parte 2:** fuerza bruta sobre los `C(N, k)` subconjuntos si `C(N, k) ≤ 10⁶`; se reporta `f_optimo`, la razón `f(S) / f_optimo` y si cumple `≥ 1 − 1/e ≈ 0.6321`. Si `f_optimo = 0`, la razón vale 1 y la cota se da por cumplida. Si el caso es demasiado grande, se omite y se indica el motivo.
 - **Parte 1:** programación dinámica exacta `O(k · B²)` si `k · B² ≤ 10⁷`; se reporta si el voraz coincide con el óptimo (diferencia `≤ 1e−9`).
 - Las comprobaciones se hacen con precisión completa, antes de redondear la salida.
-- Sin `--verificar`, `verificacion_optimo` es `null`. La sección `verificacion_restricciones` se calcula siempre.
+- Sin `--verificar`, `verificacion_optimo` es `null`. La sección `verificacion_restricciones` se calcula siempre. Si `parte1` o `parte2` se omite por tamaño, esa parte contiene `{"omitida": true, "motivo": "..."}`.
 
 ---
 
@@ -301,7 +301,7 @@ Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math
 5. Determinismo: ejecutar dos veces el mismo caso produce archivos idénticos (excepto tiempos).
 6. Bordes: `B = 0`, `universo = 0`, nodos con `cubre` vacío, tabla de utilidad más corta que `B`, `f_optimo = 0`, nodo seleccionado con 0 unidades.
 7. Tipos: `10.0` se acepta como entero, `10.5` da `E02` y los booleanos se rechazan; `1` y `"1"` como `id` dan `E04`.
-8. Salida: la carpeta usa el nombre sanitizado del archivo y las colisiones reciben sufijo; los valores por defecto de la CLI y los códigos de salida se cumplen.
+8. Salida: la carpeta usa el nombre sanitizado del archivo y las colisiones reciben sufijo; las subcarpetas de `--input` se ignoran; una parte omitida por tamaño reporta `omitida` y `motivo`; los valores por defecto de la CLI y los códigos de salida se cumplen.
 
 ---
 
