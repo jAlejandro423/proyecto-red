@@ -164,7 +164,8 @@ Reparto final `x_0 = 3, x_2 = 2`. Utilidad total `u_0(3) + u_2(2) = 10 + 6·ln 3
 
 ### 3.4 Verificación contra el óptimo (`--verificar`)
 - **Parte 2:** fuerza bruta sobre los `C(N, k)` subconjuntos si `C(N, k) ≤ 10⁶`; se reporta `f_optimo`, la razón `f(S) / f_optimo` y si cumple `≥ 1 − 1/e ≈ 0.6321`. Si `f_optimo = 0`, la razón vale 1 y la cota se da por cumplida. Si el caso es demasiado grande, se omite y se indica el motivo.
-- **Parte 1:** programación dinámica exacta `O(k · B²)` si `k · B² ≤ 10⁷`; se reporta si el voraz coincide con el óptimo (diferencia `≤ 1e−9`).
+- **Parte 1:** programación dinámica exacta `O(k · B²)` si `k · B² ≤ 10⁷`; se reporta si el voraz coincide con el óptimo: diferencia `≤ 2e−9 · B + 1e−12 · |óptimo|`.
+- Esa tolerancia cubre lo que el voraz puede perder por la sección 3.3 y la parada, hasta `1.5e−9` por unidad, más el error de coma flotante. Un valor fijo de `1e−9` daría falsos negativos: 10 unidades con ganancias de `1.0` y `1.0 + 4e−10` empatan al redondear y acumulan `4e−9`. La cota supone concavidad exacta; una tabla aceptada gracias a la tolerancia de `E08` puede superarla, y entonces se reporta `voraz_es_optimo: false`.
 - Las comprobaciones se hacen con precisión completa, antes de redondear la salida.
 - Sin `--verificar`, `verificacion_optimo` es `null`. La sección `verificacion_restricciones` se calcula siempre. Si `parte1` o `parte2` se omite por tamaño, esa parte contiene `{"omitida": true, "motivo": "..."}`.
 
@@ -303,7 +304,7 @@ Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math
 
 1. `ejemplo_01.json` produce exactamente el resultado de la sección 2.6.
 2. Cada error `E01–E10` tiene al menos un caso que lo dispara.
-3. **Parte 1:** en 200 instancias aleatorias pequeñas, el voraz coincide con la DP exacta (diferencia `≤ 1e−9`).
+3. **Parte 1:** en 200 instancias aleatorias pequeñas, el voraz coincide con la DP exacta (diferencia `≤ 1e−9`); con ganancias casi iguales, dentro de la tolerancia de la sección 3.4.
 4. **Parte 2:** en 200 instancias aleatorias pequeñas, `f(S_voraz) ≥ (1 − 1/e) · f_optimo`.
 5. Determinismo: ejecutar dos veces el mismo caso produce archivos idénticos (excepto tiempos).
 6. Bordes: `B = 0`, `universo = 0`, nodos con `cubre` vacío, tabla de utilidad más corta que `B`, `f_optimo = 0`, nodo seleccionado con 0 unidades.
