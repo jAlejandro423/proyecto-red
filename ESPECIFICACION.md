@@ -220,6 +220,7 @@ Los `id` de nodo conservan su tipo como valores y se escriben como texto cuando 
 - `asignacion` incluye a los `k` seleccionados, también a los que reciben 0 unidades.
 - `tiempos_ms.total` es la mediana de los totales por repetición, así que puede diferir de la suma de las medianas de `seleccion` y `reparto`.
 - Si el caso es inválido, `resultado.json` contiene solo `caso`, `"estado": "invalido"` y `"errores": [{"codigo": "E08", "detalle": "..."}]`, y no se genera `traza.json`.
+- Si ocurre un error inesperado al procesar un caso (por ejemplo, falta de memoria o un valor que desborda), `resultado.json` tiene la misma forma con `"estado": "error"` y `"codigo": "INTERNO"`, tampoco se genera `traza.json` y el lote continúa.
 
 ### 4.2 `traza.json`
 ```json
@@ -264,7 +265,7 @@ python generar.py --N 50 --k 10 --B 200 --universo 100 --semilla 42 --salida cas
 - **Valores por defecto:** sin `--verificar` (no se compara contra el óptimo), `--traza completa`, `--repeticiones 5`.
 - `--traza resumen`: en la Parte 2 guarda solo el elegido por paso (sin las ganancias de todos los candidatos); útil para casos grandes.
 - `--traza ninguna`: no se genera `traza.json`.
-- Código de salida: `0` si todos los casos válidos terminaron, `1` si hubo algún caso inválido (igual se procesan todos), `2` si el argumento de entrada no existe o es una carpeta sin archivos `.json` (con un mensaje que lo explica).
+- Código de salida: `0` si todos los casos válidos terminaron, `1` si hubo algún caso inválido o con error (igual se procesan todos), `2` si el argumento de entrada no existe, es una carpeta sin archivos `.json` o no se puede escribir en `--output` (con un mensaje que lo explica).
 
 ---
 
@@ -293,7 +294,8 @@ proyecto-red/
     ├── test_validacion.py
     ├── test_seleccion.py
     ├── test_reparto.py
-    └── test_contra_exactos.py
+    ├── test_contra_exactos.py
+    └── test_cli.py
 ```
 
 Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math`, `itertools`, `time`, `argparse`, `csv`). `pytest` se instala en un `.venv/` local dentro del repositorio, que no se versiona.

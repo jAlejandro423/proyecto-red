@@ -1,7 +1,7 @@
 """Lectura JSON → modelo."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.modelo import Caso, Nodo, Utilidad, UtilidadLog, UtilidadTabla
@@ -10,11 +10,15 @@ from src.validacion import ErrorValidacion, como_entero, validar
 
 @dataclass(frozen=True)
 class CasoLeido:
-    """Resultado de leer un archivo: `caso` es None si hay errores."""
+    """Resultado de leer un archivo: `caso` es None si hay errores.
+
+    `parametros` trae N, k, B y universo, con None en los que no se pudieron leer.
+    """
 
     nombre: str
     caso: Caso | None
     errores: list[ErrorValidacion]
+    parametros: dict = field(default_factory=dict)
 
 
 def leer_caso(ruta) -> CasoLeido:
@@ -27,19 +31,26 @@ def leer_caso(ruta) -> CasoLeido:
         return CasoLeido(ruta.stem, None, [ErrorValidacion("E01", f"JSON ilegible: {error}")])
 
     nombre = _nombre(datos, ruta.stem)
+    parametros = _parametros(datos)
     errores = validar(datos)
     if errores:
-        return CasoLeido(nombre, None, errores)
+        return CasoLeido(nombre, None, errores, parametros)
     try:
-        return CasoLeido(nombre, _construir_caso(datos, nombre), [])
+        return CasoLeido(nombre, _construir_caso(datos, nombre), [], parametros)
     except (OverflowError, MemoryError):
         detalle = f"universo = {datos['universo']} no cabe en la memoria disponible"
-        return CasoLeido(nombre, None, [ErrorValidacion("E03", detalle)])
+        return CasoLeido(nombre, None, [ErrorValidacion("E03", detalle)], parametros)
 
 
 def _nombre(datos, nombre_archivo: str) -> str:
     nombre = datos.get("nombre") if isinstance(datos, dict) else None
     return nombre if isinstance(nombre, str) and nombre.strip() else nombre_archivo
+
+
+def _parametros(datos) -> dict:
+    if not isinstance(datos, dict):
+        return {}
+    return {clave: como_entero(datos.get(clave)) for clave in ("N", "k", "B", "universo")}
 
 
 def _construir_caso(datos: dict, nombre: str) -> Caso:
