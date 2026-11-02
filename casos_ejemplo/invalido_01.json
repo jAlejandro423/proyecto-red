@@ -1,0 +1,10 @@
+{
+  "nombre": "invalido_01",
+  "N": 3, "k": 2, "B": 4,
+  "universo": 4,
+  "nodos": [
+    { "id": 0, "cubre": [0, 1], "utilidad": { "tipo": "tabla", "valores": [0, 5, 8, 10] } },
+    { "id": 1, "cubre": [1, 2], "utilidad": { "tipo": "tabla", "valores": [0, 1, 4, 9] } },
+    { "id": 2, "cubre": [2, 3], "utilidad": { "tipo": "log", "a": 2.0, "b": 0.5 } }
+  ]
+}

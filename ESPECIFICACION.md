@@ -22,7 +22,7 @@ caso.json → validar → Parte 2 (selección) → Parte 1 (reparto) → verific
 
 ## 2. Formato de entrada
 
-Un caso = un archivo JSON (UTF-8). Se puede pasar un archivo o una carpeta con varios `.json`. En una carpeta se procesan solo los `.json` directos; las subcarpetas se ignoran.
+Un caso = un archivo JSON (UTF-8). Se puede pasar un archivo o una carpeta con varios `.json`. En una carpeta se procesan solo los `.json` directos; las subcarpetas se ignoran. Se acepta UTF-8 con o sin BOM.
 
 ### 2.1 Campos globales
 
@@ -94,6 +94,12 @@ Con pesos unitarios es exactamente `|⋃_{i∈S} cubre_i|`, la función de la re
 - **Booleanos:** se rechazan en cualquier campo numérico o `id`.
 - **Estructura:** `nombre` es string; `nodos`, `cubre`, `pesos_universo` y `valores` son listas; `valores` no puede estar vacía; `utilidad` y cada nodo son objetos; `valores`, `pesos_universo`, `a` y `b` contienen números.
 - **Números no finitos:** se reportan solo como `E09`, no además como `E02`.
+- **`id` real:** `1.0` se normaliza a `1`, así que es duplicado de `1` y de `"1"`.
+- **Raíz:** un JSON cuya raíz no es un objeto da `E01`.
+- **`nombre`:** un string vacío o solo con espacios no da error, pero se usa el nombre del archivo.
+- **Campos adicionales:** los campos no definidos en esta especificación se ignoran y no se validan.
+- **Utilidad `log` evaluable:** si `u(B+1)` desborda el rango de los reales, da `E09`.
+- **`universo` enorme:** si los pesos por defecto de `|U|` elementos no caben en memoria, da `E03`.
 
 Las comprobaciones que dependen de un campo ya inválido se omiten para no reportar errores en cascada.
 
@@ -268,6 +274,7 @@ proyecto-red/
 ├── README.md
 ├── ESPECIFICACION.md
 ├── requirements.txt          # núcleo: solo librería estándar; pytest para pruebas
+├── pytest.ini                # permite ejecutar pytest desde la raíz
 ├── main.py                   # CLI: recorre casos, ejecuta, escribe salidas
 ├── generar.py                # generador de instancias con semilla
 ├── src/
