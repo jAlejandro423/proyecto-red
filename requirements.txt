@@ -1,0 +1,3 @@
+# El núcleo usa solo la librería estándar de Python 3.10+.
+# Dependencias únicamente para las pruebas:
+pytest==9.2.0
