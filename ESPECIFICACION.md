@@ -267,6 +267,12 @@ python generar.py --N 50 --k 10 --B 200 --universo 100 --semilla 42 --salida cas
 - `--traza ninguna`: no se genera `traza.json`.
 - Código de salida: `0` si todos los casos válidos terminaron, `1` si hubo algún caso inválido o con error (igual se procesan todos), `2` si el argumento de entrada no existe, es una carpeta sin archivos `.json` o no se puede escribir en `--output` (con un mensaje que lo explica).
 
+**Generador (`generar.py`):**
+- **Obligatorios:** todos sus argumentos (`--N`, `--k`, `--B`, `--universo`, `--semilla`, `--salida`). Los valores deben cumplir `E03`.
+- **Archivo:** crea la carpeta `--salida` si hace falta y escribe `gen_N<N>_k<k>_B<B>_U<universo>_s<semilla>.json`, con ese mismo texto en `nombre`. Los mismos argumentos producen un archivo idéntico.
+- **Contenido:** pesos reales aleatorios; cada nodo cubre entre 0 y `⌊universo/2⌋` elementos, y su utilidad es tabla (con a lo sumo 50 ganancias, y que puede ser más corta que `B`) o `log`, con la misma probabilidad.
+- **Código de salida:** `0` si escribe el archivo; `2` si los argumentos son inválidos o no se puede escribir en `--salida` (con un mensaje que lo explica).
+
 ---
 
 ## 6. Estructura del repositorio
@@ -295,10 +301,12 @@ proyecto-red/
     ├── test_seleccion.py
     ├── test_reparto.py
     ├── test_contra_exactos.py
-    └── test_cli.py
+    ├── test_cli.py
+    ├── test_generar.py
+    └── test_bordes.py
 ```
 
-Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math`, `itertools`, `time`, `argparse`, `csv`). `pytest` se instala en un `.venv/` local dentro del repositorio, que no se versiona.
+Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math`, `itertools`, `time`, `statistics`, `random`, `argparse`, `csv`). `pytest` se instala en un `.venv/` local dentro del repositorio, que no se versiona.
 
 ---
 
