@@ -265,7 +265,7 @@ python generar.py --N 50 --k 10 --B 200 --universo 100 --semilla 42 --salida cas
 - **Valores por defecto:** sin `--verificar` (no se compara contra el óptimo), `--traza completa`, `--repeticiones 5`.
 - `--traza resumen`: en la Parte 2 guarda solo el elegido por paso (sin las ganancias de todos los candidatos); útil para casos grandes.
 - `--traza ninguna`: no se genera `traza.json`.
-- Código de salida: `0` si todos los casos válidos terminaron, `1` si hubo algún caso inválido o con error (igual se procesan todos), `2` si el argumento de entrada no existe, es una carpeta sin archivos `.json` o no se puede escribir en `--output` (con un mensaje que lo explica).
+- Código de salida: `0` si todos los casos válidos terminaron, `1` si hubo algún caso inválido o con error (igual se procesan todos), `2` si los argumentos de la línea de comandos son inválidos, si el argumento de entrada no existe o es una carpeta sin archivos `.json`, o si no se puede escribir en `--output` (con un mensaje que lo explica).
 
 **Generador (`generar.py`):**
 - **Obligatorios:** todos sus argumentos (`--N`, `--k`, `--B`, `--universo`, `--semilla`, `--salida`). Los valores deben cumplir `E03`.

@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Salidas de ejecución del proyecto
+resultados/
+casos/
