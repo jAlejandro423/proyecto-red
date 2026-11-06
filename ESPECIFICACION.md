@@ -24,6 +24,13 @@ caso.json → validar → Parte 2 (selección) → Parte 1 (reparto) → verific
 
 Un caso = un archivo JSON (UTF-8). Se puede pasar un archivo o una carpeta con varios `.json`. En una carpeta se procesan solo los `.json` directos; las subcarpetas se ignoran. Se acepta UTF-8 con o sin BOM.
 
+Se aceptan dos formatos, y en una misma carpeta pueden mezclarse:
+
+- **Formato propio** (secciones 2.1–2.6): utilidad conjunta por cobertura ponderada.
+- **Formato de la docente** (sección 2.7): utilidad conjunta por influencia en un grafo.
+
+**Detección automática:** si la raíz es un objeto con el campo `parametros` o el campo `grafo`, el caso se lee en el formato de la docente; en otro caso, en el formato propio. Un archivo completo de la docente trae `parametros`, `grafo` y `nodos` con `coeficiente_utilidad`. Basta uno de los dos primeros campos para que un archivo incompleto de la docente reporte sus propios errores (`E11`, falta un campo) y no los del formato propio.
+
 ### 2.1 Campos globales
 
 | Campo | Tipo | Obligatorio | Restricción | Significado |
@@ -65,7 +72,7 @@ En ambas formas se permite `u(0) ≠ 0`, porque la Definición 3.2.1 no lo restr
 
 ### 2.4 Utilidad conjunta `f(S)` (Parte 2)
 
-Cobertura ponderada:
+En el formato propio, cobertura ponderada (la del formato de la docente está en la sección 2.7):
 
 ```
 f(S) = Σ  w_e      para todo e ∈ ⋃_{i∈S} cubre_i
@@ -139,6 +146,92 @@ Si un caso es inválido, **no se ejecuta**, se reportan todos los errores encont
 
 Reparto final `x_0 = 3, x_2 = 2`. Utilidad total `u_0(3) + u_2(2) = 10 + 6·ln 3 ≈ 16.5917`.
 
+### 2.7 Formato de la docente
+
+Es el formato de los casos de prueba de la docente (`casos_ejemplo/entrada_G2_red_15_nodos.json`):
+
+```json
+{
+  "parametros": {
+    "numero_nodos": 15,
+    "numero_rondas": 3,
+    "cupo_participantes_por_ronda_k": 5,
+    "presupuesto_ruido_por_ronda_B": 30,
+    "presupuesto_costos_participacion_por_ronda": 24
+  },
+  "grafo": [
+    { "u": "N01", "v": "N02", "peso_influencia": 0.25 },
+    ...
+  ],
+  "nodos": [
+    { "id": "N01", "coeficiente_utilidad": 8.5, "presupuesto_total_nodo": 18, "costo_participacion": 3 },
+    ...
+  ]
+}
+```
+
+**Campos y mapeo al modelo:**
+
+| Campo | Tipo | Obligatorio | Restricción | Uso |
+|---|---|---|---|---|
+| `nombre` | string | No | — | Igual que en el formato propio. |
+| `parametros` | objeto | Sí | — | Parámetros de la ronda. |
+| `parametros.numero_nodos` | entero | Sí | `≥ 1` | `N`. |
+| `parametros.cupo_participantes_por_ronda_k` | entero | Sí | `1 ≤ k ≤ N` | `k`. |
+| `parametros.presupuesto_ruido_por_ronda_B` | entero | Sí | `≥ 0` | `B`. |
+| `parametros.numero_rondas` | cualquiera | No | — | Se lee pero no se usa (ver abajo). |
+| `parametros.presupuesto_costos_participacion_por_ronda` | cualquiera | No | — | Se lee pero no se usa. |
+| `grafo` | lista de objetos | Sí | puede ser vacía | Aristas no dirigidas de influencia. |
+| `grafo[j].u`, `grafo[j].v` | entero o string | Sí | `id` existentes, `u ≠ v`, sin aristas repetidas | Extremos de la arista. |
+| `grafo[j].peso_influencia` | número | Sí | en `[0, 1]` | `p_uv = p_vu`. |
+| `nodos` | lista de objetos | Sí | longitud exactamente `N` | Nodos candidatos. |
+| `nodos[i].id` | entero o string | Sí | único, comparado como texto | Identificador. |
+| `nodos[i].coeficiente_utilidad` | número | Sí | `≥ 0` | `c_i`. |
+| `nodos[i].presupuesto_total_nodo` | entero | Sí | `≥ 0` | Tope `T_i` de unidades útiles del nodo. |
+| `nodos[i].costo_participacion` | cualquiera | No | — | Se lee pero no se usa. |
+
+En este formato se permite `k = N` (todos los nodos participan): un caso de la docente con `k = N` es legítimo y los algoritmos lo resuelven sin cambios. En el formato propio se mantiene `k < N`.
+
+Las aristas `(u, v)` y `(v, u)` son la misma arista: si aparecen las dos, es una arista repetida.
+
+**Utilidad de cada nodo (Parte 1):** la utilidad `log` existente con `a = c_i`, `b = 1`, truncada en el tope:
+
+```
+u_i(x) = c_i · ln(1 + min(x, T_i))
+```
+
+Para `x > T_i` vale `u_i(T_i)` (ganancia marginal 0), así que sigue siendo creciente y cóncava, igual que una tabla más corta que `B` (sección 2.3). Como el voraz se detiene en cada nodo cuando su ganancia es 0, ningún nodo recibe más de `T_i` unidades.
+
+**Utilidad conjunta (Parte 2), influencia:**
+
+```
+f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)]
+```
+
+con `p_vv = 1` y `p_uv = 0` si no hay arista. Es una cobertura probabilística ponderada: el nodo `v` queda cubierto por `A` con probabilidad `1 − Π (1 − p_uv)`, y estar en `A` lo cubre del todo. Es monótona y submodular porque cada término es `c_v ≥ 0` por una función de cobertura probabilística con `p_uv ∈ [0, 1]`. Con `p_uv ∈ {0, 1}` y `c_v = 1` se reduce a la cobertura de vecindarios, un caso de Cobertura Máxima.
+
+**Campos no usados:** `numero_rondas`, `presupuesto_costos_participacion_por_ronda` y `costo_participacion` pertenecen a las variantes (rondas, costos de participación), que no hacen parte de esta entrega. Se copian tal cual a `resultado.json` bajo `campos_no_usados` (sección 4.1); los que no vienen en la entrada se omiten.
+
+**Validaciones propias de este formato:**
+
+| Código | Condición que se verifica |
+|---|---|
+| `E11` | Están todos los campos obligatorios de la tabla anterior. |
+| `E12` | `numero_nodos ≥ 1`, `1 ≤ k ≤ N` y `B ≥ 0`. |
+| `E13` | Los extremos `u` y `v` de cada arista son `id` de nodos existentes (comparados como texto). |
+| `E14` | No hay lazos (`u = v`) ni aristas repetidas (en cualquier orden). |
+| `E15` | `peso_influencia` está en `[0, 1]`. |
+| `E16` | `coeficiente_utilidad ≥ 0`. |
+| `E17` | `presupuesto_total_nodo ≥ 0`. |
+
+Las condiciones que también existen en el formato propio conservan su código: `E01` (JSON ilegible o raíz que no es objeto), `E02` (tipos, con las mismas reglas de la sección 2.5), `E04` (`len(nodos) ≠ numero_nodos` o `id` repetidos) y `E09` (números no finitos, o `c_i · ln(1 + (B+1))` que desborda: la misma comprobación de la utilidad `log`, sin truncar en el tope). Las comprobaciones que dependen de un campo inválido se omiten, como en el formato propio.
+
+**Resultado esperado de `entrada_G2_red_15_nodos.json`** (sirve como prueba):
+
+- Selección voraz: `N11, N14, N09, N15, N13`, con `f ≈ 145.5795`.
+- Óptimo por fuerza bruta: `{N09, N11, N12, N13, N15}`, con `f ≈ 145.9072`; razón `≈ 0.99775`.
+- Reparto: `N11 = 5, N14 = 7, N09 = 7, N15 = 6, N13 = 5`, utilidad `≈ 88.564`, igual a la DP.
+
 ---
 
 ## 3. Reglas de los algoritmos
@@ -146,7 +239,9 @@ Reparto final `x_0 = 3, x_2 = 2`. Utilidad total `u_0(3) + u_2(2) = 10 + 6·ln 3
 ### 3.1 Parte 2 — Voraz submodular
 - En cada uno de los `k` pasos se calcula la ganancia marginal de **todos** los nodos no seleccionados y se elige la mayor.
 - Se implementa la versión directa (sin *lazy greedy*) para que el código coincida con el análisis `T(N, k) = O(N · k · τ)`.
-- Se mantiene un arreglo booleano `cubierto[0..|U|−1]`, así la ganancia de un nodo cuesta `τ = O(|cubre_i|) ≤ O(|U|)`.
+- La utilidad conjunta es una **estrategia intercambiable** (`src/conjunta.py`): cobertura (formato propio) o influencia (formato de la docente). El voraz y la fuerza bruta usan la misma interfaz: estado inicial, ganancia marginal de un candidato, agregar un nodo, y valor `f(A)` de un subconjunto.
+- **Cobertura:** se mantiene un arreglo booleano `cubierto[0..|U|−1]`, así la ganancia de un nodo cuesta `τ = O(|cubre_i|) ≤ O(|U|)`.
+- **Influencia:** se mantiene `q[v] = Π_{u∈A} (1 − p_uv)` para cada nodo `v` (al inicio vale 1). La ganancia de un candidato `u` es `Σ_v c_v · q[v] · p_uv = c_u · q[u] + Σ_{(u,v)∈E} c_v · q[v] · p_uv`, recorriendo la lista de adyacencia de `u`: `τ = O(1 + grado(u)) ≤ O(N)`. Al agregar `u`: `q[u] = 0` y `q[v] ← q[v] · (1 − p_uv)` para sus vecinos. Así `T(N, k) = O(N · k · N) = O(N² · k)` en el peor caso (grafo completo, como el de la docente).
 - Se eligen siempre exactamente `k` nodos, aunque las ganancias restantes sean 0.
 
 ### 3.2 Parte 1 — Voraz por ganancia marginal con montículo
@@ -163,7 +258,7 @@ Reparto final `x_0 = 3, x_2 = 2`. Utilidad total `u_0(3) + u_2(2) = 10 + 6·ln 3
 - Esto hace la salida **determinista**: la misma entrada siempre produce la misma salida y la misma traza.
 
 ### 3.4 Verificación contra el óptimo (`--verificar`)
-- **Parte 2:** fuerza bruta sobre los `C(N, k)` subconjuntos si `C(N, k) ≤ 10⁶`; se reporta `f_optimo`, la razón `f(S) / f_optimo` y si cumple `≥ 1 − 1/e ≈ 0.6321`. Si `f_optimo = 0`, la razón vale 1 y la cota se da por cumplida. Si el caso es demasiado grande, se omite y se indica el motivo.
+- **Parte 2:** fuerza bruta sobre los `C(N, k)` subconjuntos si `C(N, k) ≤ 10⁶`, con la misma utilidad conjunta del caso (cobertura o influencia); se reporta `f_optimo`, la razón `f(S) / f_optimo` y si cumple `≥ 1 − 1/e ≈ 0.6321`. Si `f_optimo = 0`, la razón vale 1 y la cota se da por cumplida. Si el caso es demasiado grande, se omite y se indica el motivo.
 - **Parte 1:** programación dinámica exacta `O(k · B²)` si `k · B² ≤ 10⁷`; se reporta si el voraz coincide con el óptimo: diferencia `≤ 2e−9 · B + 1e−12 · |óptimo|`.
 - Esa tolerancia cubre lo que el voraz puede perder por la sección 3.3 y la parada, hasta `1.5e−9` por unidad, más el error de coma flotante. Un valor fijo de `1e−9` daría falsos negativos: 10 unidades con ganancias de `1.0` y `1.0 + 4e−10` empatan al redondear y acumulan `4e−9`. La cota supone concavidad exacta; una tabla aceptada gracias a la tolerancia de `E08` puede superarla, y entonces se reporta `voraz_es_optimo: false`.
 - Las comprobaciones se hacen con precisión completa, antes de redondear la salida.
@@ -220,6 +315,16 @@ Los `id` de nodo conservan su tipo como valores y se escriben como texto cuando 
 - `asignacion` incluye a los `k` seleccionados, también a los que reciben 0 unidades.
 - `tiempos_ms.total` es la mediana de los totales por repetición, así que puede diferir de la suma de las medianas de `seleccion` y `reparto`.
 - Si el caso es inválido, `resultado.json` contiene solo `caso`, `"estado": "invalido"` y `"errores": [{"codigo": "E08", "detalle": "..."}]`, y no se genera `traza.json`.
+- **Formato de la docente:** `resultado.json` agrega `"formato": "docente"` después de `estado`; `parametros.universo` vale `null` (no hay universo); `verificacion_restricciones` agrega `"asignacion_respeta_topes"` (`x_i ≤ presupuesto_total_nodo` para cada seleccionado), y antes de `tiempos_ms` va:
+  ```json
+  "campos_no_usados": {
+    "nota": "variantes, entregas posteriores",
+    "numero_rondas": 3,
+    "presupuesto_costos_participacion_por_ronda": 24,
+    "costo_participacion": { "N01": 3, "N02": 5, "...": "..." }
+  }
+  ```
+  En el formato propio la salida no cambia. En `resumen.csv` la columna `universo` queda vacía para los casos de la docente.
 - Si ocurre un error inesperado al procesar un caso (por ejemplo, falta de memoria o un valor que desborda), `resultado.json` tiene la misma forma con `"estado": "error"` y `"codigo": "INTERNO"`, tampoco se genera `traza.json` y el lote continúa.
 
 ### 4.2 `traza.json`
@@ -286,18 +391,22 @@ proyecto-red/
 ├── main.py                   # CLI: recorre casos, ejecuta, escribe salidas
 ├── generar.py                # generador de instancias con semilla
 ├── src/
-│   ├── modelo.py             # clases Caso, Nodo, Utilidad (tabla y log)
-│   ├── lector.py             # lectura JSON → modelo
-│   ├── validacion.py         # E01–E10, devuelve lista de errores
+│   ├── modelo.py             # clases Caso, Nodo, Utilidad (tabla y log, con tope opcional)
+│   ├── conjunta.py           # utilidad conjunta intercambiable: cobertura e influencia
+│   ├── lector.py             # lectura JSON → modelo, detecta el formato
+│   ├── validacion.py         # E01–E10 (propio) y E11–E17 (docente), devuelve lista de errores
 │   ├── seleccion.py          # Parte 2: voraz submodular (+ traza opcional)
 │   ├── reparto.py            # Parte 1: voraz con heapq (+ traza opcional)
 │   ├── exactos.py            # fuerza bruta Parte 2 y DP Parte 1 (verificación)
 │   └── salida.py             # escritura de resultado.json, traza.json, resumen.csv
 ├── casos_ejemplo/
 │   ├── ejemplo_01.json       # el caso de la sección 2.6
-│   └── invalido_01.json      # utilidad no cóncava, para mostrar validación
+│   ├── invalido_01.json      # utilidad no cóncava, para mostrar validación
+│   └── entrada_G2_red_15_nodos.json  # caso de la docente (sección 2.7)
 └── tests/
     ├── test_validacion.py
+    ├── test_conjunta.py
+    ├── test_formato_docente.py
     ├── test_seleccion.py
     ├── test_reparto.py
     ├── test_contra_exactos.py
@@ -320,6 +429,7 @@ Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math
 6. Bordes: `B = 0`, `universo = 0`, nodos con `cubre` vacío, tabla de utilidad más corta que `B`, `f_optimo = 0`, nodo seleccionado con 0 unidades.
 7. Tipos: `10.0` se acepta como entero, `10.5` da `E02` y los booleanos se rechazan; `1` y `"1"` como `id` dan `E04`.
 8. Salida: la carpeta usa el nombre sanitizado del archivo y las colisiones reciben sufijo; las subcarpetas de `--input` se ignoran; una parte omitida por tamaño reporta `omitida` y `motivo`; los valores por defecto de la CLI y los códigos de salida se cumplen.
+9. **Formato de la docente:** se detecta solo; `entrada_G2_red_15_nodos.json` produce los valores de la sección 2.7; la `f` de influencia es monótona y submodular en instancias aleatorias; el voraz y la fuerza bruta funcionan con las dos estrategias; cada error `E11–E17` tiene al menos un caso que lo dispara.
 
 ---
 
@@ -327,5 +437,6 @@ Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math
 
 - La verificación contra el óptimo solo es posible en casos pequeños (`C(N, k) ≤ 10⁶`, `k·B² ≤ 10⁷`).
 - `T(N, B) = O(N + B log N)` es pseudo-polinomial: depende del valor de `B`, no de su tamaño en bits.
-- La utilidad conjunta implementada es cobertura ponderada; otras funciones submodulares requieren una nueva implementación de `f`.
-- Las variantes del proyecto (costos de participación, rondas con fallas, nodos vecinos) no hacen parte de esta entrega; la estructura modular permite agregarlas.
+- Hay dos utilidades conjuntas: cobertura ponderada e influencia. Otra función submodular requiere una nueva estrategia en `src/conjunta.py`, sin tocar el voraz ni la fuerza bruta.
+- Con influencia, el voraz cuesta `O(N² · k)` en un grafo completo; la DP de verificación no cambia.
+- Las variantes del proyecto (costos de participación, rondas con fallas, nodos vecinos) no hacen parte de esta entrega; la estructura modular permite agregarlas. Del formato de la docente, `numero_rondas`, `presupuesto_costos_participacion_por_ronda` y `costo_participacion` se reportan sin usarse.

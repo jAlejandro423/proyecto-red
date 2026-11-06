@@ -4,7 +4,7 @@
 
 Reparto de presupuesto y selección de participantes en una red de nodos. Cada caso se resuelve en este orden:
 
-1. **Parte 2, selección:** elige `k` de `N` nodos maximizando una utilidad conjunta monótona y submodular (cobertura ponderada). El problema es NP-difícil; se usa un voraz con garantía `≥ (1 − 1/e)` del óptimo. Complejidad: `O(N·k·τ)`, donde `τ` es el costo de calcular la ganancia de un nodo.
+1. **Parte 2, selección:** elige `k` de `N` nodos maximizando una utilidad conjunta monótona y submodular: cobertura ponderada (formato propio) o influencia en un grafo (formato de la docente). El problema es NP-difícil; se usa un voraz con garantía `≥ (1 − 1/e)` del óptimo. Complejidad: `O(N·k·τ)`, donde `τ` es el costo de calcular la ganancia de un nodo.
 2. **Parte 1, reparto:** reparte el presupuesto entero `B` entre los nodos seleccionados, con utilidades cóncavas y crecientes. Se usa un voraz por ganancia marginal con montículo, que da el óptimo salvo la tolerancia descrita en la sección 3.4 de la especificación. Complejidad: `O(N + B log N)`, pseudo-polinomial, donde `N` es la cantidad de nodos que reciben el reparto.
 
 La fuente de verdad de formatos y reglas es [ESPECIFICACION.md](ESPECIFICACION.md).
@@ -50,7 +50,11 @@ Para tus propios casos, cambia `--input` por tu archivo o carpeta. La verificaci
 
 ## Formato de entrada
 
-Cada caso es un archivo JSON en UTF-8. Este es `casos_ejemplo/ejemplo_01.json`:
+Cada caso es un archivo JSON en UTF-8. El programa acepta dos formatos y **detecta solo cuál es**: si la raíz trae `parametros` o `grafo`, es el [formato de la docente](#formato-de-la-docente); si no, el formato propio. Una misma carpeta puede mezclar casos de los dos.
+
+### Formato propio
+
+Este es `casos_ejemplo/ejemplo_01.json`:
 
 ```json
 {
@@ -84,13 +88,60 @@ La utilidad tiene una de estas dos formas:
 - **Tabla:** `{ "tipo": "tabla", "valores": [u(0), u(1), ..., u(L)] }`. Si `L < B`, para `x > L` se asume `u(x) = u(L)`.
 - **Logarítmica:** `{ "tipo": "log", "a": 6.0, "b": 1.0 }`, es decir, `u(x) = a · ln(1 + b·x)`, con `a ≥ 0` y `b > 0`.
 
+### Formato de la docente
+
+Es el formato de los casos de prueba de la docente. Este es un extracto de `casos_ejemplo/entrada_G2_red_15_nodos.json` (15 nodos, grafo completo de 105 aristas):
+
+```json
+{
+  "parametros": {
+    "numero_nodos": 15,
+    "numero_rondas": 3,
+    "cupo_participantes_por_ronda_k": 5,
+    "presupuesto_ruido_por_ronda_B": 30,
+    "presupuesto_costos_participacion_por_ronda": 24
+  },
+  "grafo": [
+    { "u": "N01", "v": "N02", "peso_influencia": 0.25 },
+    ...
+  ],
+  "nodos": [
+    { "id": "N01", "coeficiente_utilidad": 8.5, "presupuesto_total_nodo": 18, "costo_participacion": 3 },
+    ...
+  ]
+}
+```
+
+| Campo | Tipo | Obligatorio | Restricción | Uso |
+|---|---|---|---|---|
+| `nombre` | string | No | — | Nombre del caso; si falta, se usa el del archivo. |
+| `parametros.numero_nodos` | entero | Sí | `≥ 1` | `N`. |
+| `parametros.cupo_participantes_por_ronda_k` | entero | Sí | `1 ≤ k ≤ N` | `k` (aquí sí se permite `k = N`). |
+| `parametros.presupuesto_ruido_por_ronda_B` | entero | Sí | `≥ 0` | `B`. |
+| `grafo` | lista de objetos | Sí | Puede ser vacía | Aristas no dirigidas. |
+| `grafo[].u`, `grafo[].v` | entero o string | Sí | `id` existentes, sin lazos ni aristas repetidas | Extremos de la arista. |
+| `grafo[].peso_influencia` | número | Sí | En `[0, 1]` | `p_uv = p_vu`. |
+| `nodos` | lista de objetos | Sí | Longitud `N` | Nodos candidatos. |
+| `nodos[].id` | entero o string | Sí | Único al compararlo como texto | Identificador. |
+| `nodos[].coeficiente_utilidad` | número | Sí | `≥ 0` | `c_i`. |
+| `nodos[].presupuesto_total_nodo` | entero | Sí | `≥ 0` | Tope `T_i` de unidades útiles del nodo. |
+| `numero_rondas`, `presupuesto_costos_participacion_por_ronda`, `costo_participacion` | cualquiera | No | — | Se leen pero no se usan en esta entrega (variantes). |
+
+Cómo se interpreta:
+
+- **Reparto (Parte 1):** cada nodo usa `u_i(x) = c_i · ln(1 + min(x, T_i))`, la utilidad logarítmica con `b = 1` truncada en su tope. Ningún nodo recibe más de `T_i` unidades; si todos los topes se llenan, sobra presupuesto.
+- **Selección (Parte 2):** la utilidad conjunta es la influencia `f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)]`, con `p_vv = 1` y `p = 0` sin arista. Es monótona y submodular, así que el voraz conserva la garantía `≥ (1 − 1/e)`. Cada ganancia cuesta `O(N)`, y la selección queda en `O(N²·k)`.
+- **Campos no usados:** se copian a `resultado.json` bajo `campos_no_usados`, con la nota `"variantes, entregas posteriores"`.
+
+El detalle completo está en la [sección 2.7 de la especificación](ESPECIFICACION.md#27-formato-de-la-docente).
+
 ### Códigos de error
 
 Un caso inválido no se ejecuta: se reportan todos sus errores y el lote sigue con el siguiente caso.
 
 | Código | Qué indica |
 |---|---|
-| `E01` | JSON ilegible o que no está en UTF-8, raíz que no es un objeto, o falta un campo obligatorio. |
+| `E01` | JSON ilegible o que no está en UTF-8, raíz que no es un objeto, o falta un campo obligatorio (formato propio). |
 | `E02` | Tipo incorrecto en un campo. Por ejemplo, `10.5` o `true` donde va un entero (`10.0` sí se acepta). |
 | `E03` | No se cumple `N ≥ 1`, `1 ≤ k < N`, `B ≥ 0` o `universo ≥ 0`. |
 | `E04` | `nodos` no tiene `N` elementos, o hay `id` repetidos (`1` y `"1"` cuentan como repetidos). |
@@ -98,9 +149,18 @@ Un caso inválido no se ejecuta: se reportan todos sus errores y el lote sigue c
 | `E06` | `pesos_universo` no tiene longitud `\|U\|` o tiene valores negativos. |
 | `E07` | La utilidad no es creciente. |
 | `E08` | La utilidad no es cóncava. |
-| `E09` | Utilidad `log` con `a < 0` o `b ≤ 0`, o algún número no finito (`NaN`, `Infinity`). |
+| `E09` | Utilidad `log` con `a < 0` o `b ≤ 0`, algún número no finito (`NaN`, `Infinity`), o una utilidad que desborda al evaluarla. |
 | `E10` | Tipo de utilidad desconocido: no es `tabla` ni `log`. |
+| `E11` | Formato de la docente: falta un campo obligatorio. |
+| `E12` | Formato de la docente: no se cumple `numero_nodos ≥ 1`, `1 ≤ k ≤ N` o `B ≥ 0`. |
+| `E13` | Formato de la docente: un extremo de arista no es el `id` de ningún nodo. |
+| `E14` | Formato de la docente: lazo (`u = v`) o arista repetida, en cualquier orden. |
+| `E15` | Formato de la docente: `peso_influencia` fuera de `[0, 1]`. |
+| `E16` | Formato de la docente: `coeficiente_utilidad` negativo. |
+| `E17` | Formato de la docente: `presupuesto_total_nodo` negativo. |
 | `INTERNO` | Error inesperado al procesar un caso válido, como falta de memoria o un valor que desborda. No es de validación: el caso queda con estado `error`. |
+
+En el formato de la docente, `E02` (tipos), `E04` (cantidad de nodos o `id` repetidos) y `E09` (números no finitos o desborde) significan lo mismo que en el propio.
 
 Las reglas completas de tipos y validación están en la [sección 2 de la especificación](ESPECIFICACION.md#2-formato-de-entrada).
 
@@ -110,7 +170,7 @@ Por cada caso se crea `<output>/<carpeta>/`, y en `<output>/` queda el resumen d
 
 | Archivo | Contenido |
 |---|---|
-| `resultado.json` | Parámetros, nodos seleccionados, utilidad conjunta, reparto, verificación de restricciones, verificación contra el óptimo (`null` sin `--verificar`) y tiempos en milisegundos. |
+| `resultado.json` | Parámetros, nodos seleccionados, utilidad conjunta, reparto, verificación de restricciones, verificación contra el óptimo (`null` sin `--verificar`) y tiempos en milisegundos. En los casos de la docente agrega `"formato": "docente"`, la restricción `asignacion_respeta_topes` y `campos_no_usados`; `universo` vale `null`. |
 | `traza.json` | Paso a paso de ambos algoritmos: ganancias y nodo elegido en la selección; candidatos y destino de cada unidad en el reparto. |
 | `resumen.csv` | Una fila por caso: `caso,estado,N,k,B,universo,f_S,utilidad_total,presupuesto_usado,t_seleccion_ms,t_reparto_ms,t_total_ms,razon_optimo`. Los valores no disponibles quedan vacíos. |
 
@@ -136,12 +196,24 @@ El comando de [Uso rápido](#uso-rápido) muestra esto en consola:
 
 ```text
 ejemplo_01: ok
+entrada_G2_red_15_nodos: ok
 invalido_01: invalido
   E08: nodos[1].utilidad no es cóncava: g(1) = 3.0 > g(0) = 1.0 (2 en total)
-2 casos, 1 resueltos. Resultados en resultados
+3 casos, 2 resueltos. Resultados en resultados
+```
+
+Y `resultados/resumen.csv` queda así (los tiempos varían):
+
+```text
+caso,estado,N,k,B,universo,f_S,utilidad_total,presupuesto_usado,t_seleccion_ms,t_reparto_ms,t_total_ms,razon_optimo
+ejemplo_01,ok,4,2,5,6,6.0,16.5917,5,0.0181,0.0206,0.0387,1.0
+entrada_G2_red_15_nodos,ok,15,5,30,,145.5795,88.564,30,0.1752,0.0976,0.2781,0.9978
+invalido_01,invalido,3,2,4,4,,,,,,,
 ```
 
 Termina con **código de salida 1, y eso es lo esperado:** `invalido_01` está en la carpeta a propósito para mostrar que un caso inválido se rechaza sin detener el lote.
+
+### Caso propio
 
 Extracto de `resultados/ejemplo_01/resultado.json`:
 
@@ -187,6 +259,52 @@ Extracto de `resultados/ejemplo_01/resultado.json`:
 ```
 
 Es decir: selecciona `{0, 2}` con `f = 6`, reparte `x0 = 3` y `x2 = 2`, obtiene una utilidad de `16.5917` y la razón contra el óptimo es `1.0`. **Los tiempos dependen de la máquina;** todo lo demás debe coincidir.
+
+### Caso de la docente
+
+Extracto de `resultados/entrada_G2_red_15_nodos/resultado.json` (se omiten 13 de los 15 costos):
+
+```json
+{
+  "caso": "entrada_G2_red_15_nodos",
+  "estado": "ok",
+  "formato": "docente",
+  "parametros": { "N": 15, "k": 5, "B": 30, "universo": null },
+  "seleccion": {
+    "nodos": ["N11", "N14", "N09", "N15", "N13"],
+    "utilidad_conjunta": 145.5795
+  },
+  "reparto": {
+    "asignacion": { "N11": 5, "N14": 7, "N09": 7, "N15": 6, "N13": 5 },
+    "utilidad_total": 88.564,
+    "presupuesto_usado": 30,
+    "presupuesto_sin_usar": 0
+  },
+  "verificacion_restricciones": {
+    "seleccion_tiene_k_nodos": true,
+    "seleccion_sin_repetidos": true,
+    "suma_asignacion_menor_igual_B": true,
+    "asignacion_solo_a_seleccionados": true,
+    "asignaciones_no_negativas": true,
+    "asignacion_respeta_topes": true
+  },
+  "verificacion_optimo": {
+    "parte2": { "f_optimo": 145.9072, "razon": 0.9978, "cumple_cota_1_menos_1_e": true },
+    "parte1": { "utilidad_optima": 88.564, "voraz_es_optimo": true }
+  },
+  "campos_no_usados": {
+    "nota": "variantes, entregas posteriores",
+    "numero_rondas": 3,
+    "presupuesto_costos_participacion_por_ronda": 24,
+    "costo_participacion": { "N01": 3, "N02": 5, "...": "..." }
+  },
+  "tiempos_ms": { "seleccion": 0.1759, "reparto": 0.0997, "total": 0.2779, "repeticiones": 5, "estadistico": "mediana" }
+}
+```
+
+Es decir: el voraz elige `N11, N14, N09, N15, N13` con `f ≈ 145.5795`; el óptimo por fuerza bruta (`{N09, N11, N12, N13, N15}`) vale `145.9072`, así que la razón es `0.9978`, por encima de `1 − 1/e ≈ 0.632`. El reparto da `N11 = 5, N14 = 7, N09 = 7, N15 = 6, N13 = 5`, con utilidad `88.564`, igual a la de la programación dinámica. En `traza.json`, el primer paso de la selección lista las ganancias de los 15 nodos (la mayor es la de `N11`, `103.49`) y el reparto tiene 30 registros, uno por unidad.
+
+### Caso inválido
 
 `resultados/invalido_01/resultado.json` contiene un único error, `E08`, porque las ganancias del nodo 1 aumentan en lugar de disminuir:
 
@@ -260,4 +378,4 @@ Con el entorno activo, desde la carpeta del repositorio:
 python -m pytest
 ```
 
-También funciona `pytest` a secas. Hay **293 pruebas** en esta versión y tardan alrededor de un minuto.
+También funciona `pytest` a secas. Hay **389 pruebas** en esta versión y tardan alrededor de un minuto.

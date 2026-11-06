@@ -24,11 +24,10 @@ def cabe_dp(caso: Caso) -> bool:
 
 
 def seleccion_optima(caso: Caso) -> float:
-    """Devuelve `f_optimo` probando los C(N, k) subconjuntos."""
+    """Devuelve `f_optimo` probando los C(N, k) subconjuntos con la utilidad conjunta del caso."""
     mejor = 0.0
-    for subconjunto in itertools.combinations(caso.nodos, caso.k):
-        cubiertos = set().union(*(nodo.cubre for nodo in subconjunto))
-        mejor = max(mejor, math.fsum(caso.pesos_universo[e] for e in cubiertos))
+    for subconjunto in itertools.combinations(range(caso.N), caso.k):
+        mejor = max(mejor, caso.conjunta.valor(caso, subconjunto))
     return mejor
 
 

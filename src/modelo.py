@@ -1,7 +1,9 @@
-"""Clases Caso, Nodo, Utilidad (tabla y log)."""
+"""Clases Caso, Nodo, Utilidad (tabla y log, con tope opcional)."""
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from src.conjunta import Cobertura, Influencia
 
 
 class Utilidad:
@@ -27,12 +29,15 @@ class UtilidadTabla(Utilidad):
 
 @dataclass(frozen=True)
 class UtilidadLog(Utilidad):
-    """u(x) = a · ln(1 + b·x)."""
+    """u(x) = a · ln(1 + b·x); con `tope`, u(x) = u(tope) para x > tope."""
 
     a: float
     b: float
+    tope: int | None = None
 
     def valor(self, x: int) -> float:
+        if self.tope is not None:
+            x = min(x, self.tope)
         return self.a * math.log1p(self.b * x)
 
 
@@ -52,3 +57,5 @@ class Caso:
     universo: int
     pesos_universo: tuple[float, ...]
     nodos: tuple[Nodo, ...]
+    # Utilidad conjunta f(S) de la Parte 2: cobertura (formato propio) o influencia (docente).
+    conjunta: Cobertura | Influencia = field(default_factory=Cobertura)

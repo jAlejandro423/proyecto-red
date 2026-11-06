@@ -101,27 +101,36 @@ def _verificar_reparto(caso, seleccion, reparto) -> dict:
     return {"utilidad_optima": optimo, "voraz_es_optimo": voraz_coincide(reparto.utilidad_total, optimo, caso.B)}
 
 
-def _verificar_restricciones(caso, seleccion, reparto) -> dict:
+def _verificar_restricciones(caso, seleccion, reparto, docente: bool) -> dict:
     indices = seleccion.indices
-    return {
+    restricciones = {
         "seleccion_tiene_k_nodos": len(indices) == caso.k,
         "seleccion_sin_repetidos": len(set(indices)) == len(indices),
         "suma_asignacion_menor_igual_B": sum(reparto.asignacion.values()) <= caso.B,
         "asignacion_solo_a_seleccionados": set(reparto.asignacion) <= set(indices),
         "asignaciones_no_negativas": all(x >= 0 for x in reparto.asignacion.values()),
     }
+    if docente:
+        restricciones["asignacion_respeta_topes"] = all(
+            x <= caso.nodos[i].utilidad.tope for i, x in reparto.asignacion.items()
+        )
+    return restricciones
 
 
-def _resolver(nombre: str, caso, opciones) -> tuple[dict, dict | None]:
+def _resolver(leido, opciones) -> tuple[dict, dict | None]:
     """Resuelve un caso válido y devuelve el contenido de `resultado.json` y de `traza.json`."""
+    caso = leido.caso
+    docente = leido.formato == "docente"
     seleccion, reparto, tiempos = _medir(caso, opciones.repeticiones)
     traza = _generar_traza(caso, opciones.traza)
     verificacion = _verificar_optimo(caso, seleccion, reparto) if opciones.verificar else None
+    encabezado = {"caso": leido.nombre, "estado": "ok"}
+    if docente:
+        encabezado["formato"] = "docente"
     resultado = redondear(
         {
-            "caso": nombre,
-            "estado": "ok",
-            "parametros": {"N": caso.N, "k": caso.k, "B": caso.B, "universo": caso.universo},
+            **encabezado,
+            "parametros": {"N": caso.N, "k": caso.k, "B": caso.B, "universo": None if docente else caso.universo},
             "seleccion": {
                 "nodos": [caso.nodos[i].id for i in seleccion.indices],
                 "utilidad_conjunta": seleccion.utilidad_conjunta,
@@ -132,10 +141,12 @@ def _resolver(nombre: str, caso, opciones) -> tuple[dict, dict | None]:
                 "presupuesto_usado": reparto.presupuesto_usado,
                 "presupuesto_sin_usar": reparto.presupuesto_sin_usar,
             },
-            "verificacion_restricciones": _verificar_restricciones(caso, seleccion, reparto),
+            "verificacion_restricciones": _verificar_restricciones(caso, seleccion, reparto, docente),
             "verificacion_optimo": verificacion,
         }
     )
+    if docente:
+        resultado["campos_no_usados"] = leido.campos_no_usados
     resultado["tiempos_ms"] = tiempos
     return resultado, redondear(traza)
 
@@ -152,7 +163,7 @@ def _procesar(ruta: Path, salida: Path, carpeta: str, opciones) -> dict:
             _informar(carpeta, "invalido", errores)
             return {"caso": carpeta, "estado": "invalido", **parametros}
 
-        resultado, traza = _resolver(nombre, leido.caso, opciones)
+        resultado, traza = _resolver(leido, opciones)
         escribir_caso(salida / carpeta, resultado, traza)
         _informar(carpeta, "ok")
         return fila_resumen(carpeta, resultado)
