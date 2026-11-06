@@ -214,7 +214,7 @@ Para `x > T_i` vale `u_i(T_i)` (ganancia marginal 0), así que sigue siendo crec
 f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)]
 ```
 
-con `p_vv = 1` y `p_uv = 0` si no hay arista de `u` hacia `v`. Es una cobertura probabilística ponderada: el nodo `v` queda cubierto por `A` con probabilidad `1 − Π (1 − p_uv)`, y estar en `A` lo cubre del todo. Es monótona y submodular porque cada término es `c_v ≥ 0` por una función de cobertura probabilística con `p_uv ∈ [0, 1]`; el argumento no usa la simetría, así que vale igual con `p_uv ≠ p_vu`. Con `p_uv ∈ {0, 1}` y `c_v = 1` se reduce a la cobertura de vecindarios, un caso de Cobertura Máxima.
+con `p_vv = 1` y `p_uv = 0` si no hay arista de `u` hacia `v`. Es una cobertura probabilística ponderada: el nodo `v` queda cubierto por `A` con probabilidad `1 − Π (1 − p_uv)`, y estar en `A` lo cubre del todo. Es monótona y submodular porque cada término es `c_v ≥ 0` por una función de cobertura probabilística con `p_uv ∈ [0, 1]`; el argumento no usa la simetría, así que vale igual con `p_uv ≠ p_vu`. Con `p_uv ∈ {0, 1}` es una cobertura ponderada en la que cada nodo `u` cubre `{u} ∪ {v : p_uv = 1}`. La selección con esta función también es NP-difícil: la reducción desde Cobertura Máxima está en la sección 4.4 del informe.
 
 **Campos no usados:** `numero_rondas`, `presupuesto_costos_participacion_por_ronda` y `costo_participacion` pertenecen a las variantes (rondas, costos de participación), que no hacen parte de esta entrega. Se copian tal cual a `resultado.json` bajo `campos_no_usados` (sección 4.1); los que no vienen en la entrada se omiten.
 

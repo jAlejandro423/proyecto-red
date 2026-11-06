@@ -2,6 +2,8 @@
 
 **Grupo 2 · Análisis y Diseño de Algoritmos (ADAG) 2026-B · Universidad de Caldas**
 
+**Autor:** Juan Alejandro Betancourth · Código 40960 · Docente: Luz Enith Guerrero Mendieta
+
 Reparto de presupuesto y selección de participantes en una red de nodos. Cada caso se resuelve en este orden:
 
 1. **Parte 2, selección:** elige `k` de `N` nodos maximizando una utilidad conjunta monótona y submodular: cobertura ponderada (formato propio) o influencia en un grafo (formato de la docente). El problema es NP-difícil; se usa un voraz con garantía `≥ (1 − 1/e)` del óptimo. Complejidad: `O(N·k·τ)`, donde `τ` es el costo de calcular la ganancia de un nodo.
@@ -13,8 +15,11 @@ La fuente de verdad de formatos y reglas es [ESPECIFICACION.md](ESPECIFICACION.m
 
 - Python 3.10 o superior.
 - El núcleo usa solo la librería estándar. `pytest` solo hace falta para las pruebas.
+- Probado en Windows con Python 3.12.6 y pytest 9.2.0. El núcleo solo usa la librería estándar, así que debería funcionar igual en Linux y macOS con Python 3.10 o superior.
 
 ## Instalación
+
+La versión entregada es la etiqueta `entrega-1` de la rama `main`. Para obtener exactamente esa versión: `git checkout entrega-1` después de clonar.
 
 ```bash
 git clone https://github.com/jAlejandro423/proyecto-red.git
