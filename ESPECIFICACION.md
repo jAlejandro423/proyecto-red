@@ -181,9 +181,9 @@ Es el formato de los casos de prueba de la docente (`casos_ejemplo/entrada_G2_re
 | `parametros.presupuesto_ruido_por_ronda_B` | entero | Sí | `≥ 0` | `B`. |
 | `parametros.numero_rondas` | cualquiera | No | — | Se lee pero no se usa (ver abajo). |
 | `parametros.presupuesto_costos_participacion_por_ronda` | cualquiera | No | — | Se lee pero no se usa. |
-| `grafo` | lista de objetos | Sí | puede ser vacía | Aristas no dirigidas de influencia. |
-| `grafo[j].u`, `grafo[j].v` | entero o string | Sí | `id` existentes, `u ≠ v`, sin aristas repetidas | Extremos de la arista. |
-| `grafo[j].peso_influencia` | número | Sí | en `[0, 1]` | `p_uv = p_vu`. |
+| `grafo` | lista de objetos | Sí | puede ser vacía | Aristas de influencia (ver abajo cuándo son dirigidas). |
+| `grafo[j].u`, `grafo[j].v` | entero o string | Sí | `id` existentes, `u ≠ v`, sin repetir el mismo par ordenado | Extremos de la arista: `u` influye sobre `v`. |
+| `grafo[j].peso_influencia` | número | Sí | en `[0, 1]` | `p_uv`; también `p_vu` si el par aparece en una sola dirección. |
 | `nodos` | lista de objetos | Sí | longitud exactamente `N` | Nodos candidatos. |
 | `nodos[i].id` | entero o string | Sí | único, comparado como texto | Identificador. |
 | `nodos[i].coeficiente_utilidad` | número | Sí | `≥ 0` | `c_i`. |
@@ -192,7 +192,13 @@ Es el formato de los casos de prueba de la docente (`casos_ejemplo/entrada_G2_re
 
 En este formato se permite `k = N` (todos los nodos participan): un caso de la docente con `k = N` es legítimo y los algoritmos lo resuelven sin cambios. En el formato propio se mantiene `k < N`.
 
-Las aristas `(u, v)` y `(v, u)` son la misma arista: si aparecen las dos, es una arista repetida.
+**Sentido de las aristas.** `{"u": u, "v": v, "peso_influencia": p}` significa "`u` influye sobre `v` con probabilidad `p`", es decir, `p_uv = p`.
+
+- Si el par aparece en **una sola dirección**, la arista es no dirigida: `p_uv = p_vu = p`.
+- Si aparece en **las dos direcciones**, `(u, v)` y `(v, u)`, cada una conserva su peso: `p_uv` y `p_vu` pueden ser distintos (influencia dirigida).
+- Repetir la **misma dirección** (`(u, v)` dos veces) o un lazo (`u = v`) es `E14`.
+
+Con pesos iguales en las dos direcciones el resultado es el mismo que con la arista escrita una sola vez.
 
 **Utilidad de cada nodo (Parte 1):** la utilidad `log` existente con `a = c_i`, `b = 1`, truncada en el tope:
 
@@ -208,7 +214,7 @@ Para `x > T_i` vale `u_i(T_i)` (ganancia marginal 0), así que sigue siendo crec
 f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)]
 ```
 
-con `p_vv = 1` y `p_uv = 0` si no hay arista. Es una cobertura probabilística ponderada: el nodo `v` queda cubierto por `A` con probabilidad `1 − Π (1 − p_uv)`, y estar en `A` lo cubre del todo. Es monótona y submodular porque cada término es `c_v ≥ 0` por una función de cobertura probabilística con `p_uv ∈ [0, 1]`. Con `p_uv ∈ {0, 1}` y `c_v = 1` se reduce a la cobertura de vecindarios, un caso de Cobertura Máxima.
+con `p_vv = 1` y `p_uv = 0` si no hay arista de `u` hacia `v`. Es una cobertura probabilística ponderada: el nodo `v` queda cubierto por `A` con probabilidad `1 − Π (1 − p_uv)`, y estar en `A` lo cubre del todo. Es monótona y submodular porque cada término es `c_v ≥ 0` por una función de cobertura probabilística con `p_uv ∈ [0, 1]`; el argumento no usa la simetría, así que vale igual con `p_uv ≠ p_vu`. Con `p_uv ∈ {0, 1}` y `c_v = 1` se reduce a la cobertura de vecindarios, un caso de Cobertura Máxima.
 
 **Campos no usados:** `numero_rondas`, `presupuesto_costos_participacion_por_ronda` y `costo_participacion` pertenecen a las variantes (rondas, costos de participación), que no hacen parte de esta entrega. Se copian tal cual a `resultado.json` bajo `campos_no_usados` (sección 4.1); los que no vienen en la entrada se omiten.
 
@@ -219,7 +225,7 @@ con `p_vv = 1` y `p_uv = 0` si no hay arista. Es una cobertura probabilística p
 | `E11` | Están todos los campos obligatorios de la tabla anterior. |
 | `E12` | `numero_nodos ≥ 1`, `1 ≤ k ≤ N` y `B ≥ 0`. |
 | `E13` | Los extremos `u` y `v` de cada arista son `id` de nodos existentes (comparados como texto). |
-| `E14` | No hay lazos (`u = v`) ni aristas repetidas (en cualquier orden). |
+| `E14` | No hay lazos (`u = v`) ni aristas repetidas en la misma dirección (`(u, v)` dos veces). `(u, v)` y `(v, u)` juntas sí se permiten. |
 | `E15` | `peso_influencia` está en `[0, 1]`. |
 | `E16` | `coeficiente_utilidad ≥ 0`. |
 | `E17` | `presupuesto_total_nodo ≥ 0`. |
@@ -241,7 +247,7 @@ Las condiciones que también existen en el formato propio conservan su código: 
 - Se implementa la versión directa (sin *lazy greedy*) para que el código coincida con el análisis `T(N, k) = O(N · k · τ)`.
 - La utilidad conjunta es una **estrategia intercambiable** (`src/conjunta.py`): cobertura (formato propio) o influencia (formato de la docente). El voraz y la fuerza bruta usan la misma interfaz: estado inicial, ganancia marginal de un candidato, agregar un nodo, y valor `f(A)` de un subconjunto.
 - **Cobertura:** se mantiene un arreglo booleano `cubierto[0..|U|−1]`, así la ganancia de un nodo cuesta `τ = O(|cubre_i|) ≤ O(|U|)`.
-- **Influencia:** se mantiene `q[v] = Π_{u∈A} (1 − p_uv)` para cada nodo `v` (al inicio vale 1). La ganancia de un candidato `u` es `Σ_v c_v · q[v] · p_uv = c_u · q[u] + Σ_{(u,v)∈E} c_v · q[v] · p_uv`, recorriendo la lista de adyacencia de `u`: `τ = O(1 + grado(u)) ≤ O(N)`. Al agregar `u`: `q[u] = 0` y `q[v] ← q[v] · (1 − p_uv)` para sus vecinos. Así `T(N, k) = O(N · k · N) = O(N² · k)` en el peor caso (grafo completo, como el de la docente).
+- **Influencia:** se mantiene `q[v] = Π_{u∈A} (1 − p_uv)` para cada nodo `v` (al inicio vale 1). La ganancia de un candidato `u` es `Σ_v c_v · q[v] · p_uv = c_u · q[u] + Σ_{(u,v)∈E} c_v · q[v] · p_uv`, recorriendo la lista de adyacencia de `u`, que guarda sus aristas **salientes** `(v, p_uv)` (una arista no dirigida aparece en las listas de sus dos extremos): `τ = O(1 + grado(u)) ≤ O(N)`. Al agregar `u`: `q[u] = 0` y `q[v] ← q[v] · (1 − p_uv)` para sus vecinos. Así `T(N, k) = O(N · k · N) = O(N² · k)` en el peor caso (grafo completo, como el de la docente).
 - Se eligen siempre exactamente `k` nodos, aunque las ganancias restantes sean 0.
 
 ### 3.2 Parte 1 — Voraz por ganancia marginal con montículo
@@ -429,7 +435,7 @@ Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math
 6. Bordes: `B = 0`, `universo = 0`, nodos con `cubre` vacío, tabla de utilidad más corta que `B`, `f_optimo = 0`, nodo seleccionado con 0 unidades.
 7. Tipos: `10.0` se acepta como entero, `10.5` da `E02` y los booleanos se rechazan; `1` y `"1"` como `id` dan `E04`.
 8. Salida: la carpeta usa el nombre sanitizado del archivo y las colisiones reciben sufijo; las subcarpetas de `--input` se ignoran; una parte omitida por tamaño reporta `omitida` y `motivo`; los valores por defecto de la CLI y los códigos de salida se cumplen.
-9. **Formato de la docente:** se detecta solo; `entrada_G2_red_15_nodos.json` produce los valores de la sección 2.7; la `f` de influencia es monótona y submodular en instancias aleatorias; el voraz y la fuerza bruta funcionan con las dos estrategias; cada error `E11–E17` tiene al menos un caso que lo dispara.
+9. **Formato de la docente:** se detecta solo; `entrada_G2_red_15_nodos.json` produce los valores de la sección 2.7; la `f` de influencia es monótona y submodular en instancias aleatorias, simétricas y dirigidas; un par en las dos direcciones se acepta con pesos distintos; el voraz y la fuerza bruta funcionan con las dos estrategias; cada error `E11–E17` tiene al menos un caso que lo dispara.
 
 ---
 
@@ -439,4 +445,5 @@ Python 3.10+. El núcleo usa solo la librería estándar (`json`, `heapq`, `math
 - `T(N, B) = O(N + B log N)` es pseudo-polinomial: depende del valor de `B`, no de su tamaño en bits.
 - Hay dos utilidades conjuntas: cobertura ponderada e influencia. Otra función submodular requiere una nueva estrategia en `src/conjunta.py`, sin tocar el voraz ni la fuerza bruta.
 - Con influencia, el voraz cuesta `O(N² · k)` en un grafo completo; la DP de verificación no cambia.
+- El grafo de la docente se lee con un **modelo mixto**: un par escrito una vez es simétrico y un par escrito en las dos direcciones es dirigido. Si la docente quisiera un grafo totalmente dirigido escribiendo cada arista una sola vez, este programa la estaría simetrizando. Conviene confirmar con ella cómo escribe las aristas su generador.
 - Las variantes del proyecto (costos de participación, rondas con fallas, nodos vecinos) no hacen parte de esta entrega; la estructura modular permite agregarlas. Del formato de la docente, `numero_rondas`, `presupuesto_costos_participacion_por_ronda` y `costo_participacion` se reportan sin usarse.

@@ -118,9 +118,9 @@ Es el formato de los casos de prueba de la docente. Este es un extracto de `caso
 | `parametros.numero_nodos` | entero | Sí | `≥ 1` | `N`. |
 | `parametros.cupo_participantes_por_ronda_k` | entero | Sí | `1 ≤ k ≤ N` | `k` (aquí sí se permite `k = N`). |
 | `parametros.presupuesto_ruido_por_ronda_B` | entero | Sí | `≥ 0` | `B`. |
-| `grafo` | lista de objetos | Sí | Puede ser vacía | Aristas no dirigidas. |
-| `grafo[].u`, `grafo[].v` | entero o string | Sí | `id` existentes, sin lazos ni aristas repetidas | Extremos de la arista. |
-| `grafo[].peso_influencia` | número | Sí | En `[0, 1]` | `p_uv = p_vu`. |
+| `grafo` | lista de objetos | Sí | Puede ser vacía | Aristas de influencia. |
+| `grafo[].u`, `grafo[].v` | entero o string | Sí | `id` existentes, sin lazos ni el mismo par `(u, v)` repetido | `u` influye sobre `v`. |
+| `grafo[].peso_influencia` | número | Sí | En `[0, 1]` | `p_uv`; también `p_vu` si el par viene en una sola dirección. |
 | `nodos` | lista de objetos | Sí | Longitud `N` | Nodos candidatos. |
 | `nodos[].id` | entero o string | Sí | Único al compararlo como texto | Identificador. |
 | `nodos[].coeficiente_utilidad` | número | Sí | `≥ 0` | `c_i`. |
@@ -130,6 +130,7 @@ Es el formato de los casos de prueba de la docente. Este es un extracto de `caso
 Cómo se interpreta:
 
 - **Reparto (Parte 1):** cada nodo usa `u_i(x) = c_i · ln(1 + min(x, T_i))`, la utilidad logarítmica con `b = 1` truncada en su tope. Ningún nodo recibe más de `T_i` unidades; si todos los topes se llenan, sobra presupuesto.
+- **Aristas:** un par escrito en una sola dirección es no dirigido (`p_uv = p_vu`). Si vienen `(u, v)` y `(v, u)`, cada dirección conserva su peso (influencia dirigida). Repetir la misma dirección es `E14`.
 - **Selección (Parte 2):** la utilidad conjunta es la influencia `f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)]`, con `p_vv = 1` y `p = 0` sin arista. Es monótona y submodular, así que el voraz conserva la garantía `≥ (1 − 1/e)`. Cada ganancia cuesta `O(N)`, y la selección queda en `O(N²·k)`.
 - **Campos no usados:** se copian a `resultado.json` bajo `campos_no_usados`, con la nota `"variantes, entregas posteriores"`.
 
@@ -154,7 +155,7 @@ Un caso inválido no se ejecuta: se reportan todos sus errores y el lote sigue c
 | `E11` | Formato de la docente: falta un campo obligatorio. |
 | `E12` | Formato de la docente: no se cumple `numero_nodos ≥ 1`, `1 ≤ k ≤ N` o `B ≥ 0`. |
 | `E13` | Formato de la docente: un extremo de arista no es el `id` de ningún nodo. |
-| `E14` | Formato de la docente: lazo (`u = v`) o arista repetida, en cualquier orden. |
+| `E14` | Formato de la docente: lazo (`u = v`) o la misma arista `(u, v)` repetida en la misma dirección (`(u, v)` y `(v, u)` juntas sí se aceptan). |
 | `E15` | Formato de la docente: `peso_influencia` fuera de `[0, 1]`. |
 | `E16` | Formato de la docente: `coeficiente_utilidad` negativo. |
 | `E17` | Formato de la docente: `presupuesto_total_nodo` negativo. |
@@ -378,4 +379,4 @@ Con el entorno activo, desde la carpeta del repositorio:
 python -m pytest
 ```
 
-También funciona `pytest` a secas. Hay **389 pruebas** en esta versión y tardan alrededor de un minuto.
+También funciona `pytest` a secas. Hay **402 pruebas** en esta versión y tardan alrededor de un minuto.

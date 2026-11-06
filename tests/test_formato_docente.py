@@ -282,11 +282,61 @@ def test_E14_lazo():
     assert codigos(con(docente_valido(), "B", "grafo", 1, "v")) == ["E14"]
 
 
-@pytest.mark.parametrize("u, v", [("A", "B"), ("B", "A")])
-def test_E14_arista_repetida_en_cualquier_orden(u, v):
+def test_E14_arista_repetida_en_la_misma_direccion():
     datos = docente_valido()
-    datos["grafo"].append({"u": u, "v": v, "peso_influencia": 0.1})
+    datos["grafo"].append({"u": "A", "v": "B", "peso_influencia": 0.1})
+    errores = validar(datos)
+    assert [error.codigo for error in errores] == ["E14"]
+    assert "grafo[0]" in errores[0].detalle
+
+
+def test_E14_la_tercera_aparicion_de_un_par_en_dos_direcciones():
+    datos = docente_valido()
+    datos["grafo"].append({"u": "B", "v": "A", "peso_influencia": 0.1})
+    datos["grafo"].append({"u": "B", "v": "A", "peso_influencia": 0.2})
     assert codigos(datos) == ["E14"]
+
+
+# --- Aristas en las dos direcciones ---------------------------------------------
+
+
+def docente_dirigido():
+    """A → B con 0.5 y B → A con 0.1; B – C sigue siendo no dirigida (0.25)."""
+    datos = docente_valido()
+    datos["grafo"].append({"u": "B", "v": "A", "peso_influencia": 0.1})
+    return datos
+
+
+def test_un_par_en_las_dos_direcciones_es_valido():
+    assert codigos(docente_dirigido()) == []
+
+
+def test_cada_direccion_conserva_su_peso(tmp_path):
+    caso = leer_caso(escribir(tmp_path, docente_dirigido())).caso
+    f = caso.conjunta.valor
+    assert f(caso, [0]) == pytest.approx(4.0 + 2.0 * 0.5)              # A influye en B con 0.5
+    assert f(caso, [1]) == pytest.approx(2.0 + 4.0 * 0.1 + 3.0 * 0.25)  # B influye en A con 0.1
+    assert f(caso, [2]) == pytest.approx(3.0 + 2.0 * 0.25)              # C – B sigue simétrica
+
+
+def test_seleccion_con_un_par_en_las_dos_direcciones(tmp_path):
+    caso = leer_caso(escribir(tmp_path, docente_dirigido())).caso
+    traza = []
+    resultado = seleccionar(caso, traza)
+    assert resultado.indices == (0, 2)
+    assert resultado.utilidad_conjunta == pytest.approx(5.0 + 3.0 + 2.0 * 0.5 * 0.25)
+    assert traza[0]["ganancias"] == {"A": 5.0, "B": pytest.approx(3.15), "C": 3.5}
+    assert traza[1]["ganancias"] == {"B": pytest.approx(1.75), "C": pytest.approx(3.25)}
+
+
+def test_pesos_iguales_en_las_dos_direcciones_equivalen_a_una_arista(tmp_path):
+    una = leer_caso(escribir(tmp_path, docente_valido(), "una.json")).caso
+    datos = docente_valido()
+    datos["grafo"].append({"u": "B", "v": "A", "peso_influencia": 0.5})
+    dos = leer_caso(escribir(tmp_path, datos, "dos.json")).caso
+    for A in ([], [0], [1], [2], [0, 1], [0, 2], [1, 2], [0, 1, 2]):
+        assert dos.conjunta.valor(dos, A) == pytest.approx(una.conjunta.valor(una, A))
+    assert seleccionar(dos).indices == seleccionar(una).indices
 
 
 @pytest.mark.parametrize("peso", [-0.1, 1.5])

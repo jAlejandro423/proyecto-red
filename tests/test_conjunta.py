@@ -42,6 +42,23 @@ def influencia_aleatoria(semilla):
     return caso_influencia(coeficientes, aristas, k=azar.randint(1, N))
 
 
+def influencia_dirigida(semilla):
+    """Mezcla pares en una dirección (simétricos) y en las dos (con pesos distintos)."""
+    azar = random.Random(semilla + 5000)
+    N = azar.randint(2, 9)
+    coeficientes = [azar.uniform(0, 10) for _ in range(N)]
+    aristas = []
+    for u, v in itertools.combinations(range(N), 2):
+        sorteo = azar.random()
+        if sorteo < 0.5:
+            aristas.append((u, v, azar.random()))
+            aristas.append((v, u, azar.random()))
+        elif sorteo < 0.8:
+            aristas.append((v, u, azar.random()) if azar.random() < 0.5 else (u, v, azar.random()))
+    azar.shuffle(aristas)
+    return caso_influencia(coeficientes, aristas, k=azar.randint(1, N))
+
+
 def f_directa(caso, indices):
     """f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)], escrita tal cual la definición."""
     conjunta = caso.conjunta
@@ -77,12 +94,14 @@ def test_cobertura_valor_es_el_peso_de_la_union():
     assert caso.conjunta.valor(caso, ()) == 0.0
 
 
-@pytest.mark.parametrize("fabrica", ["cobertura", "influencia"])
+@pytest.mark.parametrize("fabrica", ["cobertura", "influencia", "dirigida"])
 def test_la_ganancia_es_la_diferencia_de_valores(fabrica):
     azar = random.Random(7)
     for semilla in range(50):
         if fabrica == "influencia":
             caso = influencia_aleatoria(semilla)
+        elif fabrica == "dirigida":
+            caso = influencia_dirigida(semilla)
         else:
             universo = azar.randint(0, 8)
             N = azar.randint(2, 6)
@@ -130,9 +149,30 @@ def test_las_aristas_son_no_dirigidas():
     assert caso.conjunta.valor(caso, [1]) == pytest.approx(4.0 + 2.0 * 0.5)
 
 
-def test_influencia_es_monotona():
+def test_un_par_en_las_dos_direcciones_conserva_cada_peso():
+    caso = caso_influencia([2.0, 4.0], [(0, 1, 0.5), (1, 0, 0.1)])
+    assert caso.conjunta.vecinos == (((1, 0.5),), ((0, 0.1),))
+    assert caso.conjunta.valor(caso, [0]) == pytest.approx(2.0 + 4.0 * 0.5)
+    assert caso.conjunta.valor(caso, [1]) == pytest.approx(4.0 + 2.0 * 0.1)
+
+
+def test_la_direccion_inversa_puede_venir_antes():
+    caso = caso_influencia([2.0, 4.0], [(1, 0, 0.1), (0, 1, 0.5)])
+    assert caso.conjunta.vecinos == (((1, 0.5),), ((0, 0.1),))
+
+
+def test_dirigida_vale_lo_mismo_que_la_definicion():
     for semilla in range(INSTANCIAS):
-        caso = influencia_aleatoria(semilla)
+        caso = influencia_dirigida(semilla)
+        azar = random.Random(semilla)
+        A = azar.sample(range(caso.N), azar.randint(0, caso.N))
+        assert caso.conjunta.valor(caso, A) == pytest.approx(f_directa(caso, A), abs=1e-9)
+
+
+@pytest.mark.parametrize("generador", [influencia_aleatoria, influencia_dirigida])
+def test_influencia_es_monotona(generador):
+    for semilla in range(INSTANCIAS):
+        caso = generador(semilla)
         azar = random.Random(semilla + 1000)
         orden = azar.sample(range(caso.N), caso.N)
         anterior = 0.0
@@ -142,10 +182,11 @@ def test_influencia_es_monotona():
             anterior = actual
 
 
-def test_influencia_es_submodular():
+@pytest.mark.parametrize("generador", [influencia_aleatoria, influencia_dirigida])
+def test_influencia_es_submodular(generador):
     """f(A ∪ {x}) − f(A) ≥ f(B ∪ {x}) − f(B) para A ⊆ B y x ∉ B."""
     for semilla in range(INSTANCIAS):
-        caso = influencia_aleatoria(semilla)
+        caso = generador(semilla)
         azar = random.Random(semilla + 2000)
         if caso.N < 2:
             continue
@@ -160,9 +201,10 @@ def test_influencia_es_submodular():
 # --- Voraz y fuerza bruta con influencia ---------------------------------------
 
 
-def test_el_voraz_con_influencia_reporta_el_valor_de_lo_que_elige():
+@pytest.mark.parametrize("generador", [influencia_aleatoria, influencia_dirigida])
+def test_el_voraz_con_influencia_reporta_el_valor_de_lo_que_elige(generador):
     for semilla in range(INSTANCIAS):
-        caso = influencia_aleatoria(semilla)
+        caso = generador(semilla)
         resultado = seleccionar(caso)
         assert len(resultado.indices) == caso.k
         assert len(set(resultado.indices)) == caso.k
@@ -171,16 +213,18 @@ def test_el_voraz_con_influencia_reporta_el_valor_de_lo_que_elige():
         )
 
 
-def test_la_fuerza_bruta_con_influencia_es_el_maximo_de_la_definicion():
+@pytest.mark.parametrize("generador", [influencia_aleatoria, influencia_dirigida])
+def test_la_fuerza_bruta_con_influencia_es_el_maximo_de_la_definicion(generador):
     for semilla in range(50):
-        caso = influencia_aleatoria(semilla)
+        caso = generador(semilla)
         esperado = max(f_directa(caso, A) for A in itertools.combinations(range(caso.N), caso.k))
         assert seleccion_optima(caso) == pytest.approx(esperado, abs=1e-9)
 
 
-def test_el_voraz_con_influencia_cumple_la_cota():
+@pytest.mark.parametrize("generador", [influencia_aleatoria, influencia_dirigida])
+def test_el_voraz_con_influencia_cumple_la_cota(generador):
     for semilla in range(INSTANCIAS):
-        caso = influencia_aleatoria(semilla)
+        caso = generador(semilla)
         voraz = seleccionar(caso).utilidad_conjunta
         optimo = seleccion_optima(caso)
         assert voraz <= optimo + 1e-9

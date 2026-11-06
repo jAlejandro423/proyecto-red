@@ -46,8 +46,8 @@ class Cobertura:
 class Influencia:
     """f(A) = Σ_v c_v · [1 − Π_{u∈A} (1 − p_uv)], con p_vv = 1 y p_uv = 0 sin arista.
 
-    `vecinos[u]` lista los pares (v, p_uv) de las aristas no dirigidas de u.
-    El estado es q[v] = Π_{u∈A} (1 − p_uv).
+    `vecinos[u]` lista las aristas salientes de u como pares (v, p_uv): una arista no
+    dirigida aparece en las listas de sus dos extremos. El estado es q[v] = Π_{u∈A} (1 − p_uv).
     """
 
     coeficientes: tuple[float, ...]
@@ -57,11 +57,17 @@ class Influencia:
 
     @classmethod
     def desde_aristas(cls, coeficientes, aristas) -> Influencia:
-        """Construye las listas de adyacencia a partir de tuplas (u, v, p) por posición."""
+        """Construye las listas de adyacencia a partir de tuplas (u, v, p) por posición.
+
+        (u, v, p) significa p_uv = p. Si el par inverso (v, u) no aparece, la arista es
+        no dirigida y también p_vu = p; si aparece, cada dirección conserva su peso.
+        """
+        pares = {(u, v) for u, v, _ in aristas}
         vecinos: list[list[tuple[int, float]]] = [[] for _ in coeficientes]
         for u, v, p in aristas:
             vecinos[u].append((v, float(p)))
-            vecinos[v].append((u, float(p)))
+            if (v, u) not in pares:
+                vecinos[v].append((u, float(p)))
         return cls(tuple(float(c) for c in coeficientes), tuple(tuple(lista) for lista in vecinos))
 
     def estado_inicial(self, caso: Caso) -> list[float]:

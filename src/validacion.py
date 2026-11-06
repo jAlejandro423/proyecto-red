@@ -389,7 +389,8 @@ def _validar_grafo(datos, ids, errores) -> None:
         errores.append(ErrorValidacion("E02", "grafo debe ser una lista"))
         return
 
-    vistas: dict[frozenset, int] = {}
+    # Clave por par ordenado: (u, v) y (v, u) juntas son influencia dirigida, no una repetición.
+    vistas: dict[tuple[str, str], int] = {}
     for j, arista in enumerate(grafo):
         ubicacion = f"grafo[{j}]"
         if not isinstance(arista, dict):
@@ -408,10 +409,10 @@ def _validar_grafo(datos, ids, errores) -> None:
         if u == v:
             errores.append(ErrorValidacion("E14", f"{ubicacion} es un lazo: u = v = {u!r}"))
             continue
-        clave = frozenset((u, v))
+        clave = (u, v)
         if clave in vistas:
             errores.append(
-                ErrorValidacion("E14", f"{ubicacion} repite la arista {u!r}–{v!r} de grafo[{vistas[clave]}]")
+                ErrorValidacion("E14", f"{ubicacion} repite la arista {u!r}→{v!r} de grafo[{vistas[clave]}]")
             )
         else:
             vistas[clave] = j
